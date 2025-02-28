@@ -20,6 +20,10 @@ type Registry interface {
 	TypeFromRef(ref string) reflect.Type
 	Map() map[string]*Schema
 	RegisterTypeAlias(t reflect.Type, alias reflect.Type)
+	// EnableRefForNamedPrimitives enables the use of $ref for named primitive types.
+	// When enabled, types like `type CustomHeader string` will be defined once
+	// and referenced via $ref elsewhere in the OpenAPI spec.
+	EnableRefForNamedPrimitives(enable bool)
 }
 
 // DefaultSchemaNamer provides schema names for types. It uses the type name
@@ -60,12 +64,13 @@ func DefaultSchemaNamer(t reflect.Type, hint string) string {
 }
 
 type mapRegistry struct {
-	prefix  string
-	schemas map[string]*Schema
-	types   map[string]reflect.Type
-	seen    map[reflect.Type]bool
-	namer   func(reflect.Type, string) string
-	aliases map[reflect.Type]reflect.Type
+	prefix                string
+	schemas               map[string]*Schema
+	types                 map[string]reflect.Type
+	seen                  map[reflect.Type]bool
+	namer                 func(reflect.Type, string) string
+	aliases               map[reflect.Type]reflect.Type
+	refForNamedPrimitives bool
 }
 
 func (r *mapRegistry) Schema(t reflect.Type, allowRef bool, hint string) *Schema {
@@ -83,6 +88,14 @@ func (r *mapRegistry) Schema(t reflect.Type, allowRef bool, hint string) *Schema
 	}
 
 	getsRef := t.Kind() == reflect.Struct
+
+	// Check if this is a named primitive type (like `type CustomHeader string`)
+	// and the feature is enabled
+	isNamedPrimitive := t.PkgPath() != "" && t.Name() != "" && t.Kind() != reflect.Struct
+	if r.refForNamedPrimitives && isNamedPrimitive {
+		getsRef = true
+	}
+
 	if t == timeType {
 		// Special case: time.Time is always a string.
 		getsRef = false
@@ -160,15 +173,23 @@ func (r *mapRegistry) RegisterTypeAlias(t reflect.Type, alias reflect.Type) {
 	r.aliases[t] = alias
 }
 
+// EnableRefForNamedPrimitives enables the use of $ref for named primitive types.
+// When enabled, types like `type CustomHeader string` will be defined once
+// and referenced via $ref elsewhere in the OpenAPI spec.
+func (r *mapRegistry) EnableRefForNamedPrimitives(enable bool) {
+	r.refForNamedPrimitives = enable
+}
+
 // NewMapRegistry creates a new registry that stores schemas in a map and
 // returns references to them using the given prefix.
 func NewMapRegistry(prefix string, namer func(t reflect.Type, hint string) string) Registry {
 	return &mapRegistry{
-		prefix:  prefix,
-		schemas: map[string]*Schema{},
-		types:   map[string]reflect.Type{},
-		seen:    map[reflect.Type]bool{},
-		aliases: map[reflect.Type]reflect.Type{},
-		namer:   namer,
+		prefix:                prefix,
+		schemas:               make(map[string]*Schema),
+		types:                 make(map[string]reflect.Type),
+		seen:                  make(map[reflect.Type]bool),
+		namer:                 namer,
+		aliases:               make(map[reflect.Type]reflect.Type),
+		refForNamedPrimitives: false,
 	}
 }

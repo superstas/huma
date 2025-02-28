@@ -93,15 +93,15 @@ A big thank you to our current & former sponsors!
 
 > This is by far my favorite web framework for Go. It is inspired by FastAPI, which is also amazing, and conforms to many RFCs for common web things ... I really like the feature set, the fact that it [can use] Chi, and the fact that it is still somehow relatively simple to use. I've tried other frameworks and they do not spark joy for me. - [Jeb_Jenky](https://www.reddit.com/r/golang/comments/zhitcg/comment/izmg6vk/?utm_source=reddit&utm_medium=web2x&context=3)
 
-> After working with #Golang for over a year, I stumbled upon Huma, the #FastAPI-inspired web framework. It’s the Christmas miracle I’ve been hoping for! This framework has everything! - [Hana Mohan](https://twitter.com/unamashana/status/1733088066053583197)
+> After working with #Golang for over a year, I stumbled upon Huma, the #FastAPI-inspired web framework. It's the Christmas miracle I've been hoping for! This framework has everything! - [Hana Mohan](https://twitter.com/unamashana/status/1733088066053583197)
 
-> I love Huma. Thank you, sincerely, for this awesome package. I’ve been using it for some time now and it’s been great! - [plscott](https://www.reddit.com/r/golang/comments/1aoshey/comment/kq6hcpd/?utm_source=reddit&utm_medium=web2x&context=3)
+> I love Huma. Thank you, sincerely, for this awesome package. I've been using it for some time now and it's been great! - [plscott](https://www.reddit.com/r/golang/comments/1aoshey/comment/kq6hcpd/?utm_source=reddit&utm_medium=web2x&context=3)
 
 > Thank you Daniel for Huma. Superbly useful project and saves us a lot of time and hassle thanks to the OpenAPI gen — similar to FastAPI in Python. - [WolvesOfAllStreets](https://www.reddit.com/r/golang/comments/1aqj99d/comment/kqfqcml/?utm_source=reddit&utm_medium=web2x&context=3)
 
 > Huma is wonderful, I've started working with it recently, and it's a pleasure, so thank you very much for your efforts 🙏 - [callmemicah](https://www.reddit.com/r/golang/comments/1b32ts4/comment/ksvr9h7/?utm_source=reddit&utm_medium=web2x&context=3)
 
-> It took us 3 months to build our platform in Python with FastAPI, SQL Alchemy and only 3 weeks to rewrite it in Go with Huma and SQL C. Things just work and I seldomly have to debug where in Python I spent a majority of my time debugging. - [Bitclick\_](https://www.reddit.com/r/golang/comments/1cj2znb/comment/l2e4u6y/)
+> It took us 3 months to build our platform in Python with FastAPI, SQL Alchemy and only 3 weeks to rewrite it in Go with Huma and SQL C. Things just work and I seldomly have to debug where in Python I spent a majority of my time debugging. - [Bitclick_](https://www.reddit.com/r/golang/comments/1cj2znb/comment/l2e4u6y/)
 
 > Look at Huma, it's great. A nice slim layer on top of stdlib mux/chi and automatic body and parameter serialization, kinda feels like doing dotnet web APIs, but forces you to actually design request and response structs, which is great imo. - [Kirides](https://www.reddit.com/r/golang/comments/1fnn5c2/comment/lokuvpo/)
 
@@ -217,3 +217,24 @@ Be sure to star the project if you find it useful!
 		<img alt="Star History Chart" src="https://api.star-history.com/svg?repos=danielgtaylor/huma&type=Date" />
 	</picture>
 </a>
+
+## Reusing Primitive-Based Types in OpenAPI
+
+By default, primitive-based custom types (like `type CustomHeader string`) are defined inline in the OpenAPI specification at each usage point. This keeps the specification simpler by avoiding excessive references for primitive types.
+
+However, if you want to have these types defined once and referenced via `$ref` elsewhere in the specification, you can enable this feature with the `ReuseNamedPrimitiveTypes` option:
+
+```go
+config := huma.DefaultConfig("My API", "1.0.0")
+config.ReuseNamedPrimitiveTypes = true
+
+router := chi.NewMux()
+api := humachi.New(router, config)
+```
+
+This is particularly useful when:
+- You have custom primitive-based types used in multiple places
+- You need consistent schema documentation for those types
+- You want smaller API specifications by avoiding redundant schema definitions
+
+Note that struct types are always referenced via `$ref` regardless of this setting.

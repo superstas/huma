@@ -73,3 +73,54 @@ func TestSchemaAlias(t *testing.T) {
 	schemaWithString := registry.Schema(reflect.TypeOf(StructWithString{}), false, "")
 	assert.Equal(t, schemaWithString, schemaWithContainer)
 }
+
+func TestRefForNamedPrimitives(t *testing.T) {
+	type CustomHeader string
+
+	type FirstRequest struct {
+		Header CustomHeader `json:"header" description:"A custom header"`
+	}
+
+	type SecondRequest struct {
+		AnotherHeader CustomHeader `json:"another_header" description:"Another custom header"`
+	}
+
+	// Create registry with reuse for named primitives disabled (default)
+	registry := NewMapRegistry("#/components/schemas", DefaultSchemaNamer)
+
+	// Get schema for both requests
+	first := SchemaFromType(registry, reflect.TypeOf(FirstRequest{}))
+	second := SchemaFromType(registry, reflect.TypeOf(SecondRequest{}))
+
+	// Verify that the schemas contain the CustomHeader type inline
+	if first.Properties["header"].Ref != "" {
+		t.Errorf("Expected header to be defined inline, but got a ref: %s", first.Properties["header"].Ref)
+	}
+	if second.Properties["another_header"].Ref != "" {
+		t.Errorf("Expected another_header to be defined inline, but got a ref: %s", second.Properties["another_header"].Ref)
+	}
+
+	// Create registry with reuse for named primitives enabled
+	registry = NewMapRegistry("#/components/schemas", DefaultSchemaNamer)
+	registry.(interface {
+		EnableRefForNamedPrimitives(bool)
+	}).EnableRefForNamedPrimitives(true)
+
+	// Get schema for both requests
+	first = SchemaFromType(registry, reflect.TypeOf(FirstRequest{}))
+	second = SchemaFromType(registry, reflect.TypeOf(SecondRequest{}))
+
+	// Verify that the schemas reference the CustomHeader type
+	if first.Properties["header"].Ref == "" {
+		t.Errorf("Expected header to use a ref, but it's defined inline")
+	}
+	if second.Properties["another_header"].Ref == "" {
+		t.Errorf("Expected another_header to use a ref, but it's defined inline")
+	}
+
+	// Verify that both references point to the same schema
+	if first.Properties["header"].Ref != second.Properties["another_header"].Ref {
+		t.Errorf("Expected both properties to use the same ref, but got %s and %s",
+			first.Properties["header"].Ref, second.Properties["another_header"].Ref)
+	}
+}

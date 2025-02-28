@@ -203,6 +203,12 @@ type Config struct {
 	// for example if you need access to the path settings that may be changed
 	// by the user after the defaults have been set.
 	CreateHooks []func(Config) Config
+
+	// ReuseNamedPrimitiveTypes determines whether named primitive types (e.g. `type CustomHeader string`)
+	// should be defined once and reused via $ref in the OpenAPI specification.
+	// When false (default), such types are defined inline at each usage point.
+	// When true, they will be defined in the components/schemas section and referenced via $ref.
+	ReuseNamedPrimitiveTypes bool
 }
 
 // API represents a Huma API wrapping a specific router.
@@ -387,6 +393,15 @@ func NewAPI(config Config, a Adapter) API {
 
 	if config.OpenAPI.Components.Schemas == nil {
 		config.OpenAPI.Components.Schemas = NewMapRegistry("#/components/schemas/", DefaultSchemaNamer)
+	}
+
+	// Enable referencing named primitive types if configured
+	if config.ReuseNamedPrimitiveTypes {
+		if registry, ok := config.OpenAPI.Components.Schemas.(interface {
+			EnableRefForNamedPrimitives(bool)
+		}); ok {
+			registry.EnableRefForNamedPrimitives(true)
+		}
 	}
 
 	if config.DefaultFormat == "" && config.Formats["application/json"].Marshal != nil {
