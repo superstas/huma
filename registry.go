@@ -190,6 +190,6 @@ func NewMapRegistry(prefix string, namer func(t reflect.Type, hint string) strin
 		seen:                  make(map[reflect.Type]bool),
 		namer:                 namer,
 		aliases:               make(map[reflect.Type]reflect.Type),
-		refForNamedPrimitives: false,
+		refForNamedPrimitives: true,
 	}
 }
